@@ -25,7 +25,7 @@ export async function register(data: Register) {
         password: hashedPass,
       },
     });
-    const token = await bcrypt.hash(data.email, 10);
+    const token = (await bcrypt.hash(data.email, 10)).slice(0, 30);
     const verificationToken = await db.verificationToken.create({
       data: {
         identifier: createdUser.id,

@@ -50,7 +50,7 @@ async function verifyAccessDeniedError({ email }: { email: string }) {
     where: { email },
   });
   if (existingUser && existingUser.password) {
-    const token = await bcrypt.hash(email, 10);
+    const token = (await bcrypt.hash(email, 10)).slice(0, 30);
     const verificationToken = await db.verificationToken.create({
       data: {
         identifier: existingUser.id,

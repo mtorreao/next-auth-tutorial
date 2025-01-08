@@ -1,4 +1,5 @@
 import { Unsend } from "unsend";
+import { db } from "./db";
 
 interface SendMail {
   email: string;
@@ -18,17 +19,17 @@ async function sendMail({ email, subject, html, text, from }: SendMail) {
     throw new Error("UNSEND_URL is not set");
   }
   const unsend = new Unsend(apiKey, url);
-  try {
-    await unsend.emails.send({
-      to: email,
-      from: from || "system@myfinances.codefirst.me",
-      subject: subject,
-      html,
-      text,
-    });
-  } catch (error) {
-    console.log("Error sending email", error);
+  const { data: emailSent, error } = await unsend.emails.send({
+    to: email,
+    from: from || "system@myfinances.codefirst.me",
+    subject: subject,
+    html,
+    text,
+  });
+  if (error) {
+    throw error;
   }
+  return emailSent;
 }
 
 export async function sendVerificationTokenEmail({
@@ -44,5 +45,33 @@ export async function sendVerificationTokenEmail({
   );
   const html = `<p>Click <a href="${verificationUrl}">here</a> to verify your email</p>`;
   const text = `Click here to verify your email: ${verificationUrl}`;
-  return await sendMail({ email, subject: "Verify your email", html, text });
+  const emailSent = await sendMail({
+    email,
+    subject: "Verify your email",
+    html,
+    text,
+  });
+
+  const userEmail = await db.user.findUnique({
+    where: { email },
+  });
+  if (!userEmail) {
+    throw new Error("Email user not found");
+  }
+  await db.verificationEmail.create({
+    data: {
+      to: email,
+      dateSent: new Date(),
+      provider: "SELF_UNSEND",
+      providerId: emailSent?.emailId,
+      verificationToken: {
+        connect: {
+          identifier_token: {
+            identifier: userEmail.id,
+            token: token,
+          },
+        },
+      },
+    },
+  });
 }

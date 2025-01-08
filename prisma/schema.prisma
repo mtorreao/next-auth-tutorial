@@ -72,9 +72,10 @@ model Session {
 }
 
 model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
+  identifier        String
+  token             String
+  expires           DateTime
+  verificationEmail VerificationEmail[]
 
   @@id([identifier, token])
   @@map("verification_tokens")
@@ -95,4 +96,21 @@ model Authenticator {
 
   @@id([userId, credentialID])
   @@map("authenticators")
+}
+
+enum EmailProvider {
+  SELF_UNSEND
+}
+
+model VerificationEmail {
+  id                          String             @id @default(cuid())
+  provider                    EmailProvider      @default(SELF_UNSEND)
+  to                          String
+  dateSent                    DateTime           @map("date_sent")
+  providerId                  String?            @map("provider_id")
+  verificationTokenIdentifier String             @map("verification_token_identifier")
+  verificationTokenToken      String             @map("verification_token_token")
+  verificationToken           VerificationToken? @relation(fields: [verificationTokenIdentifier, verificationTokenToken], references: [identifier, token])
+
+  @@map("verification_emails")
 }
